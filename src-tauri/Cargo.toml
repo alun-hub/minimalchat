@@ -5,10 +5,6 @@ description = "Minimal Mattermost client for low-bandwidth satellite connections
 authors = ["you"]
 edition = "2021"
 
-[lib]
-name = "minimalchat_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
-
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }
 
