@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinimalChat - Mattermost Client</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+        <div class="login-container">
+            <h1>MinimalChat</h1>
+            <p class="subtitle">Minimal Mattermost-klient för satellitförbindelser</p>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="server-url">Server URL</label>
+                    <input type="text" id="server-url" placeholder="https://mattermost.example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="auth-token">Access Token</label>
+                    <input type="password" id="auth-token" placeholder="Din access token" required>
+                    <small>Skapa en access token i Mattermost: Account Settings → Security → Personal Access Tokens</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Anslut</button>
+                <div id="login-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Chat Screen -->
+    <div id="chat-screen" class="screen">
+        <div class="main-container">
+            <!-- Sidebar with channels -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Kanaler</h2>
+                    <button id="settings-btn" class="btn-icon" title="Inställningar">⚙️</button>
+                </div>
+                <div id="channels-list" class="channels-list">
+                    <div class="loading">Laddar kanaler...</div>
+                </div>
+                <div class="sidebar-footer">
+                    <div id="connection-status" class="status-indicator">
+                        <span class="status-dot online"></span>
+                        <span>Ansluten</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat area -->
+            <div class="chat-area">
+                <div class="chat-header">
+                    <h2 id="channel-name">Välj en kanal</h2>
+                    <button id="refresh-btn" class="btn-icon" title="Uppdatera">🔄</button>
+                </div>
+
+                <div id="messages-container" class="messages-container">
+                    <div class="empty-state">
+                        <p>Välj en kanal för att börja chatta</p>
+                    </div>
+                </div>
+
+                <div class="message-input-container">
+                    <textarea id="message-input" placeholder="Skriv ett meddelande..." rows="3"></textarea>
+                    <button id="send-btn" class="btn btn-primary">Skicka</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="settings-container">
+            <div class="settings-header">
+                <h2>Inställningar</h2>
+                <button id="close-settings-btn" class="btn-icon">✕</button>
+            </div>
+
+            <form id="settings-form">
+                <div class="form-group">
+                    <label for="sync-interval">Synkroniseringsintervall (sekunder)</label>
+                    <input type="number" id="sync-interval" min="1" max="300" value="5">
+                    <small>Hur ofta nya meddelanden hämtas. Högre värde = mindre nätverkstrafik</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="max-messages">Max meddelanden per kanal</label>
+                    <input type="number" id="max-messages" min="10" max="1000" value="100">
+                    <small>Antal meddelanden att ladda per kanal</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Server</label>
+                    <div id="current-server" class="info-text"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Spara</button>
+                <button type="button" id="disconnect-btn" class="btn btn-secondary">Koppla från</button>
+                <div id="settings-message" class="success-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
