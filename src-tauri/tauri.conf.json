@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "identifier": "com.minimalchat.app",
   "build": {
-    "beforeDevCommand": "",
+    "beforeDevCommand": "npm run serve",
     "beforeBuildCommand": "",
-    "devUrl": "../src",
+    "devUrl": "http://localhost:1420",
     "frontendDist": "../src"
   },
   "bundle": {
