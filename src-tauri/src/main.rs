@@ -9,7 +9,7 @@ use database::Database;
 use mattermost::MattermostClient;
 use models::{AppState, Channel, Message, Settings};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 use tokio::sync::Mutex;
 
 #[tauri::command]
