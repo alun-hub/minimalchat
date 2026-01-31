@@ -202,7 +202,7 @@ function appendMessage(message) {
 
     messageEl.innerHTML = `
         <div class="message-header">
-            <span class="message-user">${message.user_id.substring(0, 8)}</span>
+            <span class="message-user">${escapeHtml(message.username || message.user_id.substring(0, 8))}</span>
             <span class="message-time">${timeStr}</span>
         </div>
         <div class="message-text">${escapeHtml(message.message)}</div>

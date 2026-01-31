@@ -7,7 +7,8 @@ mod models;
 
 use database::Database;
 use mattermost::MattermostClient;
-use models::{AppState, Channel, Message, Settings};
+use models::{AppState, Channel, Message, Settings, User};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
@@ -73,7 +74,34 @@ async fn get_messages(
     if let Some(client) = &app_state.client {
         // Try to fetch from server
         match client.get_channel_messages(&channel_id, limit).await {
-            Ok(messages) => {
+            Ok(mut messages) => {
+                // Collect unique user IDs that we don't have cached
+                let mut unknown_user_ids: HashSet<String> = HashSet::new();
+                for message in &messages {
+                    if app_state.db.get_user(&message.user_id).ok().flatten().is_none() {
+                        unknown_user_ids.insert(message.user_id.clone());
+                    }
+                }
+
+                // Fetch unknown users from API
+                if !unknown_user_ids.is_empty() {
+                    let user_ids: Vec<String> = unknown_user_ids.into_iter().collect();
+                    if let Ok(users) = client.get_users_by_ids(&user_ids).await {
+                        for user in users {
+                            let _ = app_state.db.save_user(&user);
+                        }
+                    }
+                }
+
+                // Fill in usernames from cache
+                for message in &mut messages {
+                    if let Ok(Some(user)) = app_state.db.get_user(&message.user_id) {
+                        message.username = user.username;
+                    } else {
+                        message.username = message.user_id.chars().take(8).collect();
+                    }
+                }
+
                 // Cache messages locally
                 for message in &messages {
                     let _ = app_state.db.save_message(message);

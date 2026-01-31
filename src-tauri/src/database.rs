@@ -1,4 +1,4 @@
-use crate::models::{Channel, Message, Settings};
+use crate::models::{Channel, Message, Settings, User};
 use rusqlite::{Connection, Result};
 use std::sync::{Arc, Mutex};
 
@@ -57,9 +57,41 @@ impl Database {
             [],
         )?;
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                username TEXT NOT NULL
+            )",
+            [],
+        )?;
+
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
         })
+    }
+
+    pub fn save_user(&self, user: &User) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT OR REPLACE INTO users (id, username) VALUES (?1, ?2)",
+            [&user.id, &user.username],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_user(&self, user_id: &str) -> Result<Option<User>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT id, username FROM users WHERE id = ?1")?;
+        let mut rows = stmt.query([user_id])?;
+
+        if let Some(row) = rows.next()? {
+            Ok(Some(User {
+                id: row.get(0)?,
+                username: row.get(1)?,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn save_channel(&self, channel: &Channel) -> Result<()> {
@@ -118,10 +150,11 @@ impl Database {
     pub fn get_messages(&self, channel_id: &str, limit: i32) -> Result<Vec<Message>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, channel_id, user_id, message, create_at
-             FROM messages
-             WHERE channel_id = ?1
-             ORDER BY create_at DESC
+            "SELECT m.id, m.channel_id, m.user_id, m.message, m.create_at, COALESCE(u.username, m.user_id)
+             FROM messages m
+             LEFT JOIN users u ON m.user_id = u.id
+             WHERE m.channel_id = ?1
+             ORDER BY m.create_at DESC
              LIMIT ?2"
         )?;
 
@@ -133,6 +166,7 @@ impl Database {
                     user_id: row.get(2)?,
                     message: row.get(3)?,
                     create_at: row.get(4)?,
+                    username: row.get(5)?,
                 })
             })?
             .collect::<Result<Vec<_>>>()?;

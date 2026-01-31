@@ -1,4 +1,4 @@
-use crate::models::{Channel, Message};
+use crate::models::{Channel, Message, User};
 use reqwest::{Client, header};
 use serde_json::json;
 use std::error::Error;
@@ -122,6 +122,7 @@ impl MattermostClient {
                         id: id.to_string(),
                         channel_id: channel_id.to_string(),
                         user_id: user_id.to_string(),
+                        username: String::new(), // Will be filled in later
                         message: message.to_string(),
                         create_at,
                     });
@@ -153,5 +154,34 @@ impl MattermostClient {
         }
 
         Ok(())
+    }
+
+    pub async fn get_users_by_ids(
+        &self,
+        user_ids: &[String],
+    ) -> Result<Vec<User>, Box<dyn Error + Send + Sync>> {
+        if user_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let url = format!("{}/api/v4/users/ids", self.base_url);
+        let response = self.client.post(&url).json(&user_ids).send().await?;
+
+        if !response.status().is_success() {
+            return Err(format!("HTTP error: {}", response.status()).into());
+        }
+
+        let data: Vec<serde_json::Value> = response.json().await?;
+        let users = data
+            .iter()
+            .filter_map(|u| {
+                Some(User {
+                    id: u["id"].as_str()?.to_string(),
+                    username: u["username"].as_str()?.to_string(),
+                })
+            })
+            .collect();
+
+        Ok(users)
     }
 }

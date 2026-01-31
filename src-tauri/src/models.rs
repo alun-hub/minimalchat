@@ -17,8 +17,15 @@ pub struct Message {
     pub id: String,
     pub channel_id: String,
     pub user_id: String,
+    pub username: String,
     pub message: String,
     pub create_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub id: String,
+    pub username: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
