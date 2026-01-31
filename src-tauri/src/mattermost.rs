@@ -10,7 +10,7 @@ pub struct MattermostClient {
 }
 
 impl MattermostClient {
-    pub fn new(base_url: String, token: String) -> Result<Self, Box<dyn Error>> {
+    pub fn new(base_url: String, token: String) -> Result<Self, Box<dyn Error + Send + Sync>> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::AUTHORIZATION,
@@ -23,7 +23,9 @@ impl MattermostClient {
 
         let client = Client::builder()
             .default_headers(headers)
-            .gzip(true) // Enable gzip compression to reduce bandwidth
+            .gzip(true)
+            .danger_accept_invalid_certs(true) // Accept self-signed certs
+            .timeout(std::time::Duration::from_secs(30))
             .build()?;
 
         Ok(Self {
@@ -33,18 +35,31 @@ impl MattermostClient {
         })
     }
 
-    pub async fn get_user_info(&self) -> Result<serde_json::Value, Box<dyn Error>> {
+    pub async fn get_user_info(&self) -> Result<serde_json::Value, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/v4/users/me", self.base_url);
-        let response = self.client.get(&url).send().await?;
+        log::info!("Connecting to: {}", url);
 
-        if !response.status().is_success() {
-            return Err(format!("HTTP error: {}", response.status()).into());
+        let response = self.client.get(&url).send().await
+            .map_err(|e| {
+                log::error!("Request failed: {}", e);
+                e
+            })?;
+
+        let status = response.status();
+        log::info!("Response status: {}", status);
+
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            log::error!("HTTP error {}: {}", status, error_text);
+            return Err(format!("HTTP error {}: {}", status, error_text).into());
         }
 
-        Ok(response.json().await?)
+        let json: serde_json::Value = response.json().await?;
+        log::info!("User info received for: {}", json["username"].as_str().unwrap_or("unknown"));
+        Ok(json)
     }
 
-    pub async fn get_channels(&self) -> Result<Vec<Channel>, Box<dyn Error>> {
+    pub async fn get_channels(&self) -> Result<Vec<Channel>, Box<dyn Error + Send + Sync>> {
         // First get user info to get team ID
         let user_info = self.get_user_info().await?;
         let user_id = user_info["id"].as_str()
@@ -80,7 +95,7 @@ impl MattermostClient {
         &self,
         channel_id: &str,
         limit: i32,
-    ) -> Result<Vec<Message>, Box<dyn Error>> {
+    ) -> Result<Vec<Message>, Box<dyn Error + Send + Sync>> {
         let url = format!(
             "{}/api/v4/channels/{}/posts?per_page={}",
             self.base_url, channel_id, limit
@@ -124,7 +139,7 @@ impl MattermostClient {
         &self,
         channel_id: &str,
         message: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/v4/posts", self.base_url);
         let body = json!({
             "channel_id": channel_id,
