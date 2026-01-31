@@ -60,6 +60,7 @@ async function init() {
 // Login
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    console.log('Login form submitted');
 
     const serverUrl = serverUrlInput.value.trim();
     const authToken = authTokenInput.value.trim();
@@ -69,25 +70,41 @@ loginForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    // Show loading state
+    const submitBtn = loginForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Ansluter...';
+    submitBtn.disabled = true;
+
     try {
+        console.log('Connecting to:', serverUrl);
         await connectToServer(serverUrl, authToken);
+        console.log('Connection successful, switching to chat screen');
         showChatScreen();
         loadChannels();
         startSync();
     } catch (error) {
-        showError(loginError, error);
+        console.error('Connection failed:', error);
+        showError(loginError, String(error));
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 });
 
 async function connectToServer(serverUrl, authToken) {
+    console.log('connectToServer called with URL:', serverUrl);
     try {
+        console.log('Invoking connect_to_server...');
         const result = await invoke('connect_to_server', {
             serverUrl,
             token: authToken
         });
-        console.log(result);
+        console.log('connect_to_server result:', result);
         updateConnectionStatus(true);
+        return result;
     } catch (error) {
+        console.error('connect_to_server error:', error);
         updateConnectionStatus(false);
         throw error;
     }
