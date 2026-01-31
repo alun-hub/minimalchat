@@ -29,6 +29,7 @@ const maxMessagesInput = document.getElementById('max-messages');
 const currentServerDiv = document.getElementById('current-server');
 const settingsMessage = document.getElementById('settings-message');
 const disconnectBtn = document.getElementById('disconnect-btn');
+const refreshChannelsBtn = document.getElementById('refresh-channels-btn');
 
 const connectionStatus = document.getElementById('connection-status');
 
@@ -176,9 +177,12 @@ async function loadMessages(channelId) {
         // Reverse to show oldest first
         messages.reverse();
 
+        // Group messages into threads
+        const threads = groupMessagesIntoThreads(messages);
+
         messagesContainer.innerHTML = '';
-        messages.forEach(message => {
-            appendMessage(message);
+        threads.forEach(thread => {
+            renderThread(thread);
         });
 
         // Scroll to bottom
@@ -189,10 +193,86 @@ async function loadMessages(channelId) {
     }
 }
 
-// Append message to UI
-function appendMessage(message) {
+// Group messages into threads
+function groupMessagesIntoThreads(messages) {
+    const threads = [];
+    const threadMap = new Map(); // root_id -> { root: message, replies: [] }
+    const processedIds = new Set();
+
+    // First pass: identify root messages and create thread structures
+    for (const message of messages) {
+        if (!message.root_id || message.root_id === '') {
+            // This is a root message
+            threadMap.set(message.id, { root: message, replies: [] });
+        }
+    }
+
+    // Second pass: attach replies to their root messages
+    for (const message of messages) {
+        if (message.root_id && message.root_id !== '') {
+            // This is a reply
+            if (threadMap.has(message.root_id)) {
+                threadMap.get(message.root_id).replies.push(message);
+                processedIds.add(message.id);
+            }
+        }
+    }
+
+    // Third pass: build final thread list in order
+    for (const message of messages) {
+        if (processedIds.has(message.id)) {
+            continue; // Skip replies, they're attached to their root
+        }
+
+        if (threadMap.has(message.id)) {
+            threads.push(threadMap.get(message.id));
+        } else if (!message.root_id || message.root_id === '') {
+            // Standalone message (not in threadMap for some reason)
+            threads.push({ root: message, replies: [] });
+        } else {
+            // Reply whose root wasn't found - show as standalone
+            threads.push({ root: message, replies: [] });
+        }
+    }
+
+    return threads;
+}
+
+// Render a thread (root message + replies)
+function renderThread(thread) {
+    const { root, replies } = thread;
+
+    if (replies.length === 0) {
+        // No replies, just render the message normally
+        appendMessage(root, false);
+    } else {
+        // Create thread container
+        const threadContainer = document.createElement('div');
+        threadContainer.className = 'thread-container';
+
+        // Add root message
+        const rootEl = createMessageElement(root, false);
+        threadContainer.appendChild(rootEl);
+
+        // Add replies container
+        const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'thread-replies';
+
+        replies.forEach(reply => {
+            const replyEl = createMessageElement(reply, true);
+            repliesContainer.appendChild(replyEl);
+        });
+
+        threadContainer.appendChild(repliesContainer);
+        messagesContainer.appendChild(threadContainer);
+    }
+}
+
+// Create message element
+function createMessageElement(message, isReply = false) {
     const messageEl = document.createElement('div');
-    messageEl.className = 'message';
+    messageEl.className = isReply ? 'message reply' : 'message';
+    messageEl.dataset.messageId = message.id;
 
     const date = new Date(message.create_at);
     const timeStr = date.toLocaleTimeString('sv-SE', {
@@ -200,14 +280,26 @@ function appendMessage(message) {
         minute: '2-digit'
     });
 
+    let replyIndicator = '';
+    if (!isReply && message.reply_count > 0) {
+        replyIndicator = `<div class="reply-count">${message.reply_count} svar</div>`;
+    }
+
     messageEl.innerHTML = `
         <div class="message-header">
             <span class="message-user">${escapeHtml(message.username || message.user_id.substring(0, 8))}</span>
             <span class="message-time">${timeStr}</span>
         </div>
         <div class="message-text">${escapeHtml(message.message)}</div>
+        ${replyIndicator}
     `;
 
+    return messageEl;
+}
+
+// Append message to UI (for standalone messages)
+function appendMessage(message, isReply = false) {
+    const messageEl = createMessageElement(message, isReply);
     messagesContainer.appendChild(messageEl);
 }
 
@@ -247,11 +339,16 @@ async function sendMessage() {
     }
 }
 
-// Refresh
+// Refresh messages
 refreshBtn.addEventListener('click', async () => {
     if (currentChannelId) {
         await loadMessages(currentChannelId);
     }
+});
+
+// Refresh channels
+refreshChannelsBtn.addEventListener('click', async () => {
+    await loadChannels();
 });
 
 // Settings

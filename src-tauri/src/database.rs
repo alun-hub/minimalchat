@@ -28,10 +28,14 @@ impl Database {
                 channel_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 message TEXT NOT NULL,
-                create_at INTEGER NOT NULL
+                create_at INTEGER NOT NULL,
+                root_id TEXT DEFAULT ''
             )",
             [],
         )?;
+
+        // Migration: add root_id column if it doesn't exist
+        let _ = conn.execute("ALTER TABLE messages ADD COLUMN root_id TEXT DEFAULT ''", []);
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_messages_channel_id
@@ -134,14 +138,15 @@ impl Database {
     pub fn save_message(&self, message: &Message) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR REPLACE INTO messages (id, channel_id, user_id, message, create_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR REPLACE INTO messages (id, channel_id, user_id, message, create_at, root_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             [
                 &message.id,
                 &message.channel_id,
                 &message.user_id,
                 &message.message,
                 &message.create_at.to_string(),
+                &message.root_id,
             ],
         )?;
         Ok(())
@@ -150,7 +155,9 @@ impl Database {
     pub fn get_messages(&self, channel_id: &str, limit: i32) -> Result<Vec<Message>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT m.id, m.channel_id, m.user_id, m.message, m.create_at, COALESCE(u.username, m.user_id)
+            "SELECT m.id, m.channel_id, m.user_id, m.message, m.create_at,
+                    COALESCE(u.username, m.user_id), COALESCE(m.root_id, ''),
+                    (SELECT COUNT(*) FROM messages r WHERE r.root_id = m.id) as reply_count
              FROM messages m
              LEFT JOIN users u ON m.user_id = u.id
              WHERE m.channel_id = ?1
@@ -167,6 +174,8 @@ impl Database {
                     message: row.get(3)?,
                     create_at: row.get(4)?,
                     username: row.get(5)?,
+                    root_id: row.get(6)?,
+                    reply_count: row.get(7)?,
                 })
             })?
             .collect::<Result<Vec<_>>>()?;

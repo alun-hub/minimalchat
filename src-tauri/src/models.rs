@@ -20,6 +20,8 @@ pub struct Message {
     pub username: String,
     pub message: String,
     pub create_at: i64,
+    pub root_id: String,        // Empty if root message, otherwise ID of parent
+    pub reply_count: i32,       // Number of replies (for root messages)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

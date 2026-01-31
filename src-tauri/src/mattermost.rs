@@ -118,6 +118,9 @@ impl MattermostClient {
                     post["message"].as_str(),
                     post["create_at"].as_i64(),
                 ) {
+                    let root_id = post["root_id"].as_str().unwrap_or("").to_string();
+                    let reply_count = post["reply_count"].as_i64().unwrap_or(0) as i32;
+
                     messages.push(Message {
                         id: id.to_string(),
                         channel_id: channel_id.to_string(),
@@ -125,6 +128,8 @@ impl MattermostClient {
                         username: String::new(), // Will be filled in later
                         message: message.to_string(),
                         create_at,
+                        root_id,
+                        reply_count,
                     });
                 }
             }

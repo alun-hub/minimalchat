@@ -179,6 +179,11 @@ body {
     color: #4a9eff;
 }
 
+.sidebar-header-buttons {
+    display: flex;
+    gap: 4px;
+}
+
 .channels-list {
     flex: 1;
     overflow-y: auto;
@@ -296,6 +301,59 @@ body {
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+/* Thread styling */
+.thread-container {
+    margin-bottom: 20px;
+    border-left: 3px solid #4a9eff;
+    padding-left: 0;
+}
+
+.thread-container .message {
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 2px;
+}
+
+.thread-container .message:first-child {
+    border-radius: 0 4px 0 0;
+}
+
+.thread-container .message:last-child {
+    border-radius: 0 0 4px 0;
+    margin-bottom: 0;
+}
+
+.message.reply {
+    margin-left: 20px;
+    background: #262626;
+    border-left: 2px solid #3a7bd5;
+    padding-left: 10px;
+}
+
+.message.reply .message-user {
+    color: #3a7bd5;
+}
+
+.reply-count {
+    font-size: 12px;
+    color: #4a9eff;
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.reply-count:hover {
+    text-decoration: underline;
+}
+
+.thread-replies {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #333;
+}
+
+.thread-replies.collapsed {
+    display: none;
 }
 
 .message-input-container {
