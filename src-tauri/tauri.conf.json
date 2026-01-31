@@ -25,6 +25,7 @@
     }
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "MinimalChat - Mattermost Client",
